@@ -336,28 +336,28 @@ end
 foreach y in nsb_true nsb_table nsb_dollar {
     foreach s in 2 1 0 {
         if `s'==2 {
-            local cond ""
+            local ifc ""
             local cl "all"
             local sesoi = .05
         }
         else {
-            local cond "& owncond==`s'"
+            local ifc "& owncond==`s'"
             local cl = cond(`s'==1, "E", "NE")
             local sesoi = cond(`s'==1, .05, .03)
         }
         di _n as result "==== `y' by range, `cl' (SESOI = +/-`sesoi') ===="
-        capture noisily tab mplcond `y' if 1 `cond', row chi2 exact
-        quietly count if mplcond==0 `cond'
+        capture noisily tab mplcond `y' if 1 `ifc', row chi2 exact
+        quietly count if mplcond==0 `ifc'
         local n0 = r(N)
-        quietly count if mplcond==0 & `y'==1 `cond'
+        quietly count if mplcond==0 & `y'==1 `ifc'
         local x0 = r(N)
-        quietly count if mplcond==1 `cond'
+        quietly count if mplcond==1 `ifc'
         local n1 = r(N)
-        quietly count if mplcond==1 & `y'==1 `cond'
+        quietly count if mplcond==1 & `y'==1 `ifc'
         local x1 = r(N)
         * (a) TOST on the risk difference (AME of range from a logit; same formulas as Stats Analyses 2)
         capture noisily {
-            quietly logit `y' i.mplcond if 1 `cond'
+            quietly logit `y' i.mplcond if 1 `ifc'
             margins, dydx(mplcond) post
             local d    = _b[1.mplcond]
             local se   = _se[1.mplcond]
@@ -373,7 +373,8 @@ foreach y in nsb_true nsb_table nsb_dollar {
         }
         * (b) Bayes factor
         bf01 `x0' `n0' `x1' `n1'
-        prow "2" "`cl'" "`y'" "BF01" "x0/n0 vs x1/n1" (r(bf01)) (.) (.) (`x0') (`x1')
+        local bf = r(bf01)
+        prow "2" "`cl'" "`y'" "BF01" "x0/n0 vs x1/n1" (`bf') (.) (.) (`x0') (`x1')
     }
 }
 
@@ -393,7 +394,8 @@ foreach y in keepc_cat sellc_cat buyc_cat nobuyc_cat {
     quietly count if mplcond==1 & owncond==`s' & `y'==1
     local x1 = r(N)
     bf01 `x0' `n0' `x1' `n1'
-    prow "2b" "`cl'" "`y'" "BF01" "x0/n0 vs x1/n1" (r(bf01)) (.) (.) (`x0') (`x1')
+    local bf = r(bf01)
+    prow "2b" "`cl'" "`y'" "BF01" "x0/n0 vs x1/n1" (`bf') (.) (.) (`x0') (`x1')
     capture noisily firthlogit `y' i.mplcond if owncond==`s'
     if _rc==0 prow "2b" "`cl'" "`y'" "firth_logit" "wide-normal (log odds)" (_b[1.mplcond]) (_se[1.mplcond]) (2*normal(-abs(_b[1.mplcond]/_se[1.mplcond]))) (`x0') (`x1')
 }
@@ -689,8 +691,8 @@ foreach s in 1 0 {
         prow "6" "`cl'" "wide arm" "`y'" "corner rate" (r(N)/`n') (.) (.) (r(N)) (`n')
     }
     * the comparison that matters: nsb_narrow (same $62-161 window, 10 rungs) vs cornerA/B (10 rungs, full span)
-    capture noisily mcnemar cornerA nsb_narrow if mplcond==1 & owncond==`s'
-    capture noisily mcnemar cornerB nsb_narrow if mplcond==1 & owncond==`s'
+    capture noisily mcc cornerA nsb_narrow if mplcond==1 & owncond==`s'
+    capture noisily mcc cornerB nsb_narrow if mplcond==1 & owncond==`s'
 }
 * switcher endowment gap on the actual vs simulated ladders (wide arm)
 di _n as result "Switcher endowment gap (wide arm): actual vs simulated 10-rung ladders"
